@@ -6,5 +6,7 @@ main: net.extrillius.CodeDay.CodeDay
 commands:
   checkpoint:
     description: Set checkpoint
-  setstart:
+  startloc:
     description: set the starting point
+  join:
+    description: joins a game
