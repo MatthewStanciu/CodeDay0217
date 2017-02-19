@@ -1,6 +1,6 @@
 package net.extrillius.CodeDay;
 
-import org.apache.commons.lang3.StringUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -9,15 +9,16 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scoreboard.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -131,6 +132,7 @@ public class CodeDay extends JavaPlugin implements Listener {
         if (p.getLocation().getBlock().getType() == Material.OBSIDIAN) {
             getConfig().get("checkpoints.end", p.getLocation());
             checkpoint.put(p.getName(), "end");
+            clearScoreboard();
 
             i.clear();
             for (Player q : getServer().getOnlinePlayers()) {
@@ -141,11 +143,35 @@ public class CodeDay extends JavaPlugin implements Listener {
             getServer().broadcastMessage(ChatColor.DARK_RED + p.getName() + " WON THE GAME!");
             clear();
         }
-    }
+        ArrayList<Double> playerY = new ArrayList<>();
+        Iterator it = playerY.iterator();
+        for (Player q : getServer().getOnlinePlayers()) {
+            playerY.add(q.getLocation().getY());
+
+            while (it.hasNext()) {
+                if (it.equals(it.next())) {
+                    if (!(checkpoint.get(q.getName()).equals("beginning"))) {
+                        deathmatchTimer();
+                    }
+                }
+            }
+        }
+     }
+
+     @EventHandler
+     public void onHit(EntityDamageByEntityEvent e) {
+        if (e.getEntity() instanceof Player) {
+            Player p = (Player) e.getEntity();
+
+
+        }
+     }
 
     @EventHandler
     public void onDeath(PlayerDeathEvent e) {
         final Player p = e.getEntity();
+        Player killer = p.getKiller();
+        updateScoreboard(killer);
 
         getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
             @Override
@@ -163,7 +189,10 @@ public class CodeDay extends JavaPlugin implements Listener {
     //queue
     private ArrayList<Player> queue = new ArrayList<>();
     public static int seconds = 10;
+    public static int dm = 20;
     int timer;
+    int dmTimer;
+    public boolean deathmatch = false;
 
     public void addToQueue(Player p) {
         if (queue.contains(p)) {
@@ -203,10 +232,64 @@ public class CodeDay extends JavaPlugin implements Listener {
                         getServer().getScheduler().cancelTask(timer);
                         seconds = 10;
                         teleportPlayers();
+                        makeScoreboard();
                         getServer().broadcastMessage(ChatColor.RED + "GAME STARTED!");
                     }
                 }
             }, 20L,20L);
+        }
+    }
+    public void deathmatchTimer() {
+        deathmatch = true;
+        dmTimer = getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
+            @Override
+            public void run() {
+                dm--;
+                if (dm != 0) {
+                    getServer().broadcastMessage(ChatColor.GREEN + "Deathmatch ends in " + dm);
+                }
+                else {
+                    getServer().getScheduler().cancelTask(dmTimer);
+                    dm = 20;
+                    deathmatch = false;
+                    int score;
+
+                    Iterator entryIterator = board.getEntries().iterator();
+                    for (String s : board.getEntries()) {
+                        score = Integer.parseInt(s);
+                    }
+                    while (entryIterator.hasNext()) {
+
+                    }
+                }
+            }
+        }, 20L, 20L);
+    }
+    ScoreboardManager sm;
+    Scoreboard board;
+    Team team;
+    Objective obj;
+    Score score;
+    public void makeScoreboard() {
+        sm = Bukkit.getScoreboardManager();
+        board = sm.getNewScoreboard();
+        for (Player p : getServer().getOnlinePlayers()) {
+            team = board.registerNewTeam(p.getName());
+            team.addEntry(p.getName());
+            team.setDisplayName(p.getName());
+            obj = board.registerNewObjective("Kills", "playerKillCount");
+            obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+            score = obj.getScore(p.getName());
+        }
+    }
+    public void updateScoreboard(Player p) {
+        score = obj.getScore(p.getName() + 1);
+    }
+    public void clearScoreboard() {
+        for (Player p : getServer().getOnlinePlayers()) {
+            board.resetScores(p.getName());
+            board.resetScores("Kills");
+            p.setScoreboard(sm.getNewScoreboard());
         }
     }
 
@@ -223,6 +306,10 @@ public class CodeDay extends JavaPlugin implements Listener {
         }
 
         if (cmd.getName().equalsIgnoreCase("join")) {
+            if (getConfig().getDouble("checkpoints.beginning.X") == 0.0) {
+                p.sendMessage(ChatColor.RED + "Please set your beginning location first");
+                return false;
+            }
             if (!isEmpty()) {
                 addToQueue(p);
                 startGame();
