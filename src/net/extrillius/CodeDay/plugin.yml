@@ -1,0 +1,10 @@
+name: CodeDay
+author: MatthewStanciu
+version: 1.0
+main: net.extrillius.CodeDay.CodeDay
+
+commands:
+  checkpoint:
+    description: Set checkpoint
+  setstart:
+    description: set the starting point
